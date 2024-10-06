@@ -72,19 +72,15 @@ def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
     for atom in combined_initial_atoms:
         if debugging:
             print(f"Atom: {atom['value']}")
-        # Skip jika atom sudah digunakan
-        if atom['used']:
-            if debugging:
-                print(f"Atom: {atom['value']} sudah digunakan, skipping...")
-            continue
-
         # Lewati atom yang tidak sesuai dengan bagian awal target_word
         if not target_word.startswith(atom['value']):
+            if debugging:
+                print(f"Atom: {atom['value']} tidak memenuhi kata awal {target_word}, skipping...")
             continue
 
         # Gunakan atom saat ini untuk membentuk molekul
         current_molecule = atom['value']
-        atom['used'] = True
+        used_atoms_local = [atom]  # Simpan atom-atom yang sudah digunakan dalam percobaan ini
         target_index = len(current_molecule)
 
         if debugging:
@@ -97,18 +93,21 @@ def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
 
             # Iterasi melalui semua atom yang tersedia
             for next_candidate in combined_initial_atoms:
-                if not next_candidate['used'] and remaining_target.startswith(next_candidate['value']):
+                if debugging:
+                    print(f"Next Candidate: {next_candidate}")
+
+                if next_candidate not in used_atoms_local and next_candidate['used'] is False and remaining_target.startswith(next_candidate['value']):
                     next_atom = next_candidate
                     break
 
             if next_atom is None:  # Tidak ada atom yang cocok untuk dilanjutkan
                 if debugging:
-                    print(f"Gagal menemukan atom berikutnya untuk melengkapi molekul dari {atom['value']}")
+                    print(f"Gagal menemukan atom berikutnya untuk melengkapi molekul dari {current_molecule}")
                 break
 
             # Gabungkan atom ke dalam molekul
             current_molecule += next_atom['value']
-            next_atom['used'] = True
+            used_atoms_local.append(next_atom)
             target_index += len(next_atom['value'])
 
             if debugging:
@@ -127,11 +126,17 @@ def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
                 print(f"Similarity Score: {similarity_score}% untuk molekul {current_molecule}")
             if similarity_score >= similarity_threshold:
                 count += 1
+                # Tandai semua atom yang digunakan sebagai `used` hanya jika molekul valid
+                for used_atom in used_atoms_local:
+                    used_atom['used'] = True
                 if debugging:
                     print(f"Valid Molecule: {current_molecule}")
         else:
             if len(current_molecule) >= required_len:
                 count += 1
+                # Tandai semua atom yang digunakan sebagai `used` hanya jika molekul valid
+                for used_atom in used_atoms_local:
+                    used_atom['used'] = True
                 if debugging:
                     print(f"Valid Molecule: {current_molecule}")
 
