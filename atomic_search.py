@@ -14,6 +14,7 @@ def extract_atoms(target_words, search_space, min_atom_size):
     :return: Dictionary dari atom yang valid untuk setiap target word dan atom ambigu.
     """
     atoms = defaultdict(list)
+    atom_id = 1
     
     # Tentukan min_atom_size apakah dalam bentuk persentase atau jumlah huruf
     if isinstance(min_atom_size, str) and min_atom_size.endswith('%'):
@@ -37,17 +38,24 @@ def extract_atoms(target_words, search_space, min_atom_size):
                 if any(candidate in target[i:i + len(candidate)] for i in range(len(target))):
                     matching_targets.append(target)
 
+        if len(matching_targets) == 1:
+            ref = matching_targets[0]
+        elif len(matching_targets) > 1:
+            ref = 'ambiguous_word'
+        else:
+            continue
+
         # Buat atom dengan format objek
         atom_object = {
+            'id': atom_id,
             'value': candidate,
-            'used': False
+            'used': False,
+            'ref': ref
         }
 
-        # Masukkan atom ke target word yang sesuai atau ke 'ambigous_word' jika cocok lebih dari satu
-        if len(matching_targets) == 1:
-            atoms[matching_targets[0]].append(atom_object)
-        elif len(matching_targets) > 1:
-            atoms['ambiguous_word'].append(atom_object)
+        atom_id += 1
+
+        atoms[ref].append(atom_object)
 
     return atoms
 
@@ -71,11 +79,11 @@ def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
 
     for atom in combined_initial_atoms:
         if debugging:
-            print(f"Atom: {atom['value']}")
+            print(f"Atom: {atom}")
         # Lewati atom yang tidak sesuai dengan bagian awal target_word
         if not target_word.startswith(atom['value']):
             if debugging:
-                print(f"Atom: {atom['value']} tidak memenuhi kata awal {target_word}, skipping...")
+                print(f"Atom: {atom} tidak memenuhi kata awal {target_word}, skipping...")
             continue
 
         # Gunakan atom saat ini untuk membentuk molekul
@@ -84,7 +92,7 @@ def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
         target_index = len(current_molecule)
 
         if debugging:
-            print(f"Atom awal: {atom['value']}, Molekul saat ini: {current_molecule}")
+            print(f"- Atom awal: {atom}, Molekul saat ini: {current_molecule}")
 
         # Gabungkan atom-atom berikutnya
         while target_index < target_len:
@@ -96,7 +104,7 @@ def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
                 if debugging:
                     print(f"Next Candidate: {next_candidate}")
 
-                if next_candidate not in used_atoms_local and next_candidate['used'] is False and remaining_target.startswith(next_candidate['value']):
+                if next_candidate['id'] not in [atom['id'] for atom in used_atoms_local] and next_candidate['used'] is False and remaining_target.startswith(next_candidate['value']):
                     next_atom = next_candidate
                     break
 
@@ -111,7 +119,7 @@ def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
             target_index += len(next_atom['value'])
 
             if debugging:
-                print(f"Gabungan atom: {next_atom['value']}, Molekul saat ini: {current_molecule}")
+                print(f"- Gabungan atom: {next_atom['value']}, Molekul saat ini: {current_molecule}")
 
         # Jika panjang molekul melebihi target_word, maka molekul tidak valid
         if len(current_molecule) > target_len:
@@ -123,14 +131,14 @@ def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
         if use_percent_similarity:
             similarity_score = difflib.SequenceMatcher(None, current_molecule, target_word).ratio() * 100
             if debugging:
-                print(f"Similarity Score: {similarity_score}% untuk molekul {current_molecule}")
+                print(f"-- Similarity Score: {similarity_score}% untuk molekul {current_molecule}")
             if similarity_score >= similarity_threshold:
                 count += 1
                 # Tandai semua atom yang digunakan sebagai `used` hanya jika molekul valid
                 for used_atom in used_atoms_local:
                     used_atom['used'] = True
                 if debugging:
-                    print(f"Valid Molecule: {current_molecule}")
+                    print(f"-- Valid Molecule: {current_molecule}")
         else:
             if len(current_molecule) >= required_len:
                 count += 1
@@ -138,10 +146,10 @@ def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
                 for used_atom in used_atoms_local:
                     used_atom['used'] = True
                 if debugging:
-                    print(f"Valid Molecule: {current_molecule}")
+                    print(f"-- Valid Molecule: {current_molecule}")
 
         if debugging:
-            print(f"Total Molekul yang ditemukan sejauh ini: {count}\n")
+            print(f"--- Total Molekul yang ditemukan sejauh ini: {count}\n")
 
     return count
 
@@ -152,7 +160,8 @@ def atomic_search(target_words, search_space, min_atom_size, molecule_similarity
     results = {}
     for target_word in target_words:
         if debugging:
-            print(f"{atoms}\n")
+            print(f"\n{atoms}")
+            print(f"--- Target: {target_word}\n")
         result = form_molecules(atoms, target_word, molecule_similarity, debugging)
         results[target_word] = result
 
