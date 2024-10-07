@@ -34,14 +34,12 @@ def read_ground_truth(csv_file_path):
     return ground_truth
 
 # Test atomic_search on JavaScript files based on command line input
-def test_atomic_search(dataset_paths, file_name):
+def test_atomic_search(dataset_paths, file_name, min_atom_size, molecule_similarity):
     js_folder, csv_file_path = dataset_paths
 
     # Read ground truth data
     ground_truth_data = read_ground_truth(csv_file_path)
 
-    min_atom_size = "1"
-    molecule_similarity="100%"
     debugging=False
     expected_mae = 0.3
     expected_r2 = 0.9
