@@ -1,3 +1,7 @@
+import sys
+import json
+import csv
+import os
 from collections import defaultdict
 import re
 
@@ -10,7 +14,7 @@ def extract_atoms(target_words, search_space, min_atom_size):
     else:
         letter_thresholds = {target: int(min_atom_size) for target in target_words}
 
-    candidate_atoms = re.split(r'[^a-zA-Z]+', search_space)
+    candidate_atoms = re.split(r'[^a-zA-Z0-9]+', search_space)
 
     for candidate in candidate_atoms:
         if len(candidate) == 0:
