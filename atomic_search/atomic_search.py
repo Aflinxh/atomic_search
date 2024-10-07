@@ -1,5 +1,5 @@
 from .extract_atoms import extract_atoms
-from .form_molecules import form_molecules
+from .form_molecule import form_molecule
 
 def atomic_search(target_words, search_space, min_atom_size, molecule_similarity, debugging=False):
     atoms = extract_atoms(target_words, search_space, min_atom_size)
@@ -9,7 +9,7 @@ def atomic_search(target_words, search_space, min_atom_size, molecule_similarity
         if debugging:
             print(f"\n{atoms}")
             print(f"--- Target: {target_word}\n")
-        result = form_molecules(atoms, target_word, molecule_similarity, debugging)
+        result = form_molecule(atoms, target_word, molecule_similarity, debugging)
         results[target_word] = result
 
     if debugging:

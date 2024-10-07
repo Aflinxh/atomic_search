@@ -1,6 +1,6 @@
 import difflib
 
-def form_molecules(atoms, target_word, molecule_similarity, debugging=False):
+def form_molecule(atoms, target_word, molecule_similarity, debugging=False):
     count = 0
     target_len = len(target_word)
 
