@@ -4,22 +4,6 @@ import pytest
 from atomic_search.atomic_search import atomic_search
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-# Fixture to add command line option for file name
-def pytest_addoption(parser):
-    parser.addoption("--file-name", action="store", default=None, help="JavaScript file name to test (optional)")
-
-# Fixture to get the JavaScript file name or None if testing all files
-@pytest.fixture
-def file_name(request):
-    return request.config.getoption("--file-name")
-
-# Fixture to prepare dataset paths and ground truth data
-@pytest.fixture
-def dataset_paths():
-    js_folder = 'dataset-testing/js'
-    csv_file_path = 'dataset-testing/obfuscated_js_dataset.csv'
-    return js_folder, csv_file_path
-
 # Function to read ground truth data from CSV
 def read_ground_truth(csv_file_path):
     ground_truth = {}
@@ -34,15 +18,13 @@ def read_ground_truth(csv_file_path):
     return ground_truth
 
 # Test atomic_search on JavaScript files based on command line input
-def test_atomic_search(dataset_paths, file_name, min_atom_size, molecule_similarity):
+def test_atomic_search(dataset_paths, file_name, min_atom_size, molecule_similarity, expected_mae, expected_r2):
     js_folder, csv_file_path = dataset_paths
 
     # Read ground truth data
     ground_truth_data = read_ground_truth(csv_file_path)
 
     debugging=False
-    expected_mae = 0.3
-    expected_r2 = 0.9
 
     if file_name:
         # Test a specific file if --file-name is provided
