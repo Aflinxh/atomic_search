@@ -3,19 +3,52 @@ import string
 import csv
 import os
 import argparse
+import json
+from pprint import pprint
 
-# Function to obfuscate syntax with concatenation (without additional noise)
-def obfuscate_syntax(syntax):
-    parts = [char for char in syntax]
-    obfuscated_parts = []
-    i = 0
-    while i < len(parts):
-        chunk_size = random.randint(1, 3)
-        chunk = ''.join(parts[i:i + chunk_size])
-        obfuscated_parts.append(f"'{chunk}'")
-        i += chunk_size
-    obfuscated_syntax = " + ".join(obfuscated_parts)
-    return obfuscated_syntax
+# Function to create atoms for each target word based on syntax count requirements
+def create_atoms(target_words, syntax_counts_list, min_atom_size=1, max_atom_size=3):
+    atoms_list = []
+
+    # Iterate over each sample's syntax counts
+    for syntax_counts in syntax_counts_list:
+        atoms = {}
+        atom_id = 1
+        for target in target_words:
+            atoms[target] = []
+            count = syntax_counts.get(target, 0)  # Get the count of the current target in this sample
+
+            for _ in range(count):
+                # Randomly decide whether to use the full target_word as a single atom or split it
+                if random.random() > 0.5:
+                    # Use the full target word as a single atom
+                    atoms[target].append({
+                        'id': atom_id,
+                        'value': target,
+                        'used': False,
+                        'ref': target
+                    })
+                    atom_id += 1
+                else:
+                    # Split the target word into smaller atoms with random sizes
+                    i = 0
+                    while i < len(target):
+                        # Generate a random size for the atom between min_atom_size and max_atom_size
+                        atom_size = random.randint(min_atom_size, max_atom_size)
+                        value = target[i:i + atom_size]
+                        if value:  # Ensure it's not an empty string
+                            atoms[target].append({
+                                'id': atom_id,
+                                'value': value,
+                                'used': False,
+                                'ref': target
+                            })
+                            atom_id += 1
+                        i += atom_size
+
+        atoms_list.append(atoms)
+
+    return atoms_list
 
 # Function to determine the number of syntax occurrences in each JavaScript file
 def determine_syntax_counts(syntax_list, num_samples):
@@ -25,30 +58,56 @@ def determine_syntax_counts(syntax_list, num_samples):
         syntax_counts_list.append(syntax_counts)
     return syntax_counts_list
 
-# Function to generate JavaScript code based on the specified number of syntax occurrences
-def generate_random_js(syntax_counts_list):
+# Function to generate JavaScript code using all atoms from atoms_list without leaving any unused
+def generate_random_js(atoms_list):
     js_samples = []
-    for syntax_counts in syntax_counts_list:
-        js_code = ""
-        for syntax, count in syntax_counts.items():
-            for _ in range(count):
-                if random.random() > 0.5:
-                    obfuscated = obfuscate_syntax(syntax)
-                    js_code += obfuscated + "; "
-                else:
-                    js_code += syntax + "; "
 
-                # Optionally add random comments to increase obfuscation (can be removed if not needed)
-                if random.random() > 0.3:
+    # Iterate over each atom set for each sample
+    for sample_index, atoms in enumerate(atoms_list):
+        all_atoms = []
+
+        # Flatten all atoms from all target words into one list
+        for atom_list in atoms.values():
+            all_atoms.extend(atom_list)
+
+        # Shuffle the atom list to create randomness
+        random.shuffle(all_atoms)
+
+        js_code = ""
+
+        # Iterate through all shuffled atoms to build the JavaScript code
+        while any(not atom['used'] for atom in all_atoms):
+            atom = random.choice(all_atoms)
+
+            if not atom['used']:
+                # Decide randomly how to use the atom
+                if random.random() > 0.5:
+                    # Wrap atom value in single quotes and add concatenation symbol '+'
+                    js_code += f"'{atom['value']}' + "
+                else:
+                    # Use the atom as a whole command followed by a semicolon
+                    js_code += f"{atom['value']}; "
+
+                # Mark the atom as used
+                atom['used'] = True
+
+                # Randomly decide to add a variable declaration with random value
+                if random.random() > 0.6:
+                    var_name = ''.join(random.choices(string.ascii_lowercase, k=random.randint(3, 8)))
+                    var_value = random.randint(1, 100)
+                    js_code += f"var {var_name} = {var_value};\n"
+
+                # Randomly decide to add a comment for obfuscation
+                if random.random() > 0.4:
                     random_comment = ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(5, 15)))
                     js_code += f"// {random_comment}\n"
 
-                # Optionally add random JavaScript statements to add complexity (can be removed if not needed)
-                if random.random() > 0.6:
-                    random_var = ''.join(random.choices(string.ascii_lowercase, k=random.randint(3, 8)))
-                    random_value = random.randint(1, 100)
-                    js_code += f"var {random_var} = {random_value};\n"
+        # Clean up the ending '+' if it exists
+        if js_code.endswith(' + '):
+            js_code = js_code[:-3] + ";\n"
+
         js_samples.append(js_code.strip())
+
     return js_samples
 
 # Function to save obfuscated JavaScript files to the 'js' folder
@@ -58,22 +117,29 @@ def save_js_files(js_samples, folder_name="dataset-testing/js"):
         with open(file_path, mode='w') as file:
             file.write(js_code)
 
-# Function to save data into a CSV file with 'js_name' column and feature columns for each syntax
-def save_to_csv_with_features(syntax_counts_list, folder_name="dataset-testing", filename="obfuscated_js_dataset.csv"):
+# Function to save data into a CSV file with 'js_name' column and feature columns for each syntax and atoms
+def save_to_csv_with_features(syntax_counts_list, atoms_list, folder_name="dataset-testing", filename="obfuscated_js_dataset.csv"):
     file_path = os.path.join(folder_name, filename)
     with open(file_path, mode='w', newline='') as file:
         writer = csv.writer(file)
-        header = ['js_name'] + list(syntax_counts_list[0].keys())
+
+        # Header: js_name, syntax features, and atoms
+        header = ['js_name'] + list(syntax_counts_list[0].keys()) + ['atoms']
         writer.writerow(header)
-        for idx, syntax_counts in enumerate(syntax_counts_list):
+
+        for idx, (syntax_counts, atoms) in enumerate(zip(syntax_counts_list, atoms_list)):
             js_name = os.path.join(folder_name, "js", f"sample_{idx + 1}.js")
             feature_counts = [syntax_counts[syntax] for syntax in syntax_counts]
-            writer.writerow([js_name] + feature_counts)
+
+            # Save atoms as JSON formatted string for better readability in CSV
+            atoms_str = json.dumps(atoms, indent=4)
+
+            writer.writerow([js_name] + feature_counts + [atoms_str])
 
 # Main function
 def main():
     parser = argparse.ArgumentParser(description="Generate obfuscated JavaScript dataset.")
-    parser.add_argument('--num_samples', type=int, default=10, help='Number of JavaScript samples to generate')
+    parser.add_argument('--num-samples', type=int, default=10, help='Number of JavaScript samples to generate')
     args = parser.parse_args()
 
     syntax_list = [
@@ -82,29 +148,23 @@ def main():
         'innerHTML', 'console', 'log', 'eval',
     ]
 
-    # Create 'dataset-testing' and 'js' folders if they do not exist
-    dataset_folder = "dataset-testing"
-    js_folder = os.path.join(dataset_folder, "js")
-
-    if not os.path.exists(dataset_folder):
-        os.makedirs(dataset_folder)
-    if not os.path.exists(js_folder):
-        os.makedirs(js_folder)
-
     # Determine the number of syntax occurrences for each generated JavaScript file
     num_samples = args.num_samples  # Number of samples to generate from command line argument (default is 10)
     syntax_counts_list = determine_syntax_counts(syntax_list, num_samples)
 
-    # Generate dataset with obfuscated JavaScript
-    js_samples = generate_random_js(syntax_counts_list)
+    # Create atoms for each target word with random length between min_atom_size and max_atom_size or use the whole target as a single atom
+    atoms_list = create_atoms(syntax_list, syntax_counts_list, min_atom_size=1, max_atom_size=3)
+
+    # Save dataset with features to 'dataset-testing', including atoms
+    save_to_csv_with_features(syntax_counts_list, atoms_list, folder_name="dataset-testing")
+
+    # Generate dataset with obfuscated JavaScript using defined atoms in random order
+    js_samples = generate_random_js(atoms_list)
 
     # Save obfuscated JavaScript files to 'dataset-testing/js'
-    save_js_files(js_samples, js_folder)
+    save_js_files(js_samples, "dataset-testing/js")
 
-    # Save dataset with features to 'dataset-testing'
-    save_to_csv_with_features(syntax_counts_list, dataset_folder)
-
-    print(f"JavaScript dataset has been saved in the folder '{js_folder}', and the CSV file has been saved in the folder '{dataset_folder}'.")
+    print(f"JavaScript dataset has been saved in the folder 'dataset-testing/js', and the CSV file has been saved in the folder 'dataset-testing'.")
 
 if __name__ == "__main__":
     main()
