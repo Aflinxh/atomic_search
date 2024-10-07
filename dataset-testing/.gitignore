@@ -1,0 +1,12 @@
+*
+
+!.gitignore
+
+!js/
+!js/sample_1.js
+!js/sample_2.js
+!js/sample_3.js
+!js/sample_4.js
+!js/sample_5.js
+
+!obfuscated_js_dataset.csv
