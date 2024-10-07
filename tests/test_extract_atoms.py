@@ -2,8 +2,9 @@ import pytest
 import os
 import csv
 import json
+import datetime as dt
+import pytz
 from atomic_search.atomic_search import extract_atoms
-from conftest import save_test_logs
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # Function to read the expected atoms from CSV
@@ -44,14 +45,67 @@ def compare_atoms(filtered_result, filtered_expected):
 
     return result_diff
 
+# Update the save_test_logs function to handle differences
+def save_test_logs(test_name, file_name, log_dir, filtered_result, filtered_expected, differences):
+    jakarta_tz = pytz.timezone('Asia/Jakarta')
+
+    # Create the folder structure for logs
+    time_stamp = dt.datetime.now(jakarta_tz).strftime("%Y-%m-%d_%H-%M-%S")
+    test_log_dir = os.path.join(log_dir, f"{test_name}/{time_stamp}_{file_name}")
+    os.makedirs(test_log_dir, exist_ok=True)
+
+    # Write filtered result, expected and differences to separate log files
+    result_file = os.path.join(test_log_dir, 'filtered_result.json')
+    expected_file = os.path.join(test_log_dir, 'filtered_expected.json')
+    differences_file = os.path.join(test_log_dir, 'differences.json')
+
+    with open(result_file, 'w') as f:
+        json.dump(filtered_result, f, indent=4)
+    with open(expected_file, 'w') as f:
+        json.dump(filtered_expected, f, indent=4)
+    with open(differences_file, 'w') as f:
+        json.dump(differences, f, indent=4)
+
+    print(f"\nTest failed. Logs written to: {test_log_dir}")
+
+# Function to evaluate atoms extraction for a given JavaScript file
+def evaluate_atoms(file_name, search_space, expected_atoms, log_dir):
+    # Use the target words from the keys of expected atoms
+    target_words = list(expected_atoms.keys())
+    min_atom_size = 1
+
+    # Run the extract_atoms function
+    result = extract_atoms(target_words, search_space, min_atom_size)
+
+    # Filter the result and expected atoms to only compare value and ref properties
+    filtered_result = filter_atoms(result)
+    filtered_expected = filter_atoms(expected_atoms)
+
+    # Compare atoms to find any differences
+    differences = compare_atoms(filtered_result, filtered_expected)
+
+    # Write logs if differences are found
+    if differences:
+        save_test_logs('test_extract_atoms', file_name, log_dir, filtered_result, filtered_expected, differences)
+
+    # Prepare y_true and y_pred for regression metrics
+    y_true = []
+    y_pred = []
+    for key in filtered_expected.keys():
+        y_true.append(len(filtered_expected[key]))
+        y_pred.append(len(filtered_result.get(key, [])))
+
+    return y_true, y_pred
+
+# Main test function for extract_atoms
 def test_extract_atoms(file_name, log_dir, dataset_paths, expected_mae, expected_r2):
     js_folder, csv_file_path = dataset_paths
 
-    y_true = []
-    y_pred = []
+    y_true_total = []
+    y_pred_total = []
 
     if file_name:
-        # If file name is provided, use its content and CSV data
+        # Test a specific file if provided
         js_file_path = os.path.join(js_folder, file_name)
 
         # Check if the JavaScript file exists
@@ -67,42 +121,10 @@ def test_extract_atoms(file_name, log_dir, dataset_paths, expected_mae, expected
         if expected_atoms is None:
             pytest.fail(f"Expected atoms for file '{file_name}' not found in '{csv_file_path}'")
 
-        # Use the target words from the keys of expected atoms
-        target_words = list(expected_atoms.keys())
-        min_atom_size = 1
-
-        # Run the function
-        result = extract_atoms(target_words, search_space, min_atom_size)
-
-        # Filter the result and expected atoms to only compare value and ref properties
-        filtered_result = filter_atoms(result)
-        filtered_expected = filter_atoms(expected_atoms)
-
-        # Compare atoms to find any differences
-        differences = compare_atoms(filtered_result, filtered_expected)
-
-        # Write logs if differences are found
-        if differences:
-            save_test_logs('test_extract_atoms', log_dir, filtered_result, filtered_expected, differences)
-
-        # Prepare y_true and y_pred for regression metrics
-        for key in filtered_expected.keys():
-            y_true.append(len(filtered_expected[key]))
-            y_pred.append(len(filtered_result.get(key, [])))
-
-        # Calculate evaluation metrics for the current file
-        mae = mean_absolute_error(y_true, y_pred)
-        mse = mean_squared_error(y_true, y_pred)
-        r2 = r2_score(y_true, y_pred)
-
-        # Print evaluation results for the current file
-        print(f"\nEvaluation Results for file {file_name}:")
-        print(f"Mean Absolute Error (MAE): {mae:.2f}")
-        print(f"Mean Squared Error (MSE): {mse:.2f}")
-        print(f"R² Score: {r2:.2f}\n")
-
-        assert mae <= expected_mae, f"MAE for file '{file_name}' should be less than {expected_mae}"
-        assert r2 >= expected_r2, f"R² for file '{file_name}' should be greater than {expected_r2} to indicate good accuracy"
+        # Evaluate atoms for the given file
+        y_true, y_pred = evaluate_atoms(file_name, search_space, expected_atoms, log_dir)
+        y_true_total.extend(y_true)
+        y_pred_total.extend(y_pred)
 
     else:
         # If no specific file is provided, test all JavaScript files in the folder
@@ -122,39 +144,29 @@ def test_extract_atoms(file_name, log_dir, dataset_paths, expected_mae, expected
                 # Skip if the expected atoms are not found in CSV
                 continue
 
-            # Use the target words from the keys of expected atoms
-            target_words = list(expected_atoms.keys())
-            min_atom_size = 1
+            # Evaluate atoms for the given file
+            y_true, y_pred = evaluate_atoms(js_file_name, search_space, expected_atoms, log_dir)
+            y_true_total.extend(y_true)
+            y_pred_total.extend(y_pred)
 
-            # Run the extract_atoms function
-            result = extract_atoms(target_words, search_space, min_atom_size)
+    # Calculate evaluation metrics for all files
+    if len(y_true_total) == 0 or len(y_pred_total) == 0:
+        pytest.fail("No valid data to compute metrics.")
 
-            # Filter the result and expected atoms to only compare value and ref properties
-            filtered_result = filter_atoms(result)
-            filtered_expected = filter_atoms(expected_atoms)
+    mae = mean_absolute_error(y_true_total, y_pred_total)
+    mse = mean_squared_error(y_true_total, y_pred_total)
+    r2 = r2_score(y_true_total, y_pred_total)
 
-            # Compare atoms to find any differences
-            differences = compare_atoms(filtered_result, filtered_expected)
-
-            # Write logs if differences are found
-            if differences:
-                save_test_logs(f'test_extract_atoms_{js_file_name}', log_dir, filtered_result, filtered_expected, differences)
-
-            # Prepare y_true and y_pred for regression metrics
-            for key in filtered_expected.keys():
-                y_true.append(len(filtered_expected[key]))
-                y_pred.append(len(filtered_result.get(key, [])))
-
-        # Calculate evaluation metrics for all files
-        mae = mean_absolute_error(y_true, y_pred)
-        mse = mean_squared_error(y_true, y_pred)
-        r2 = r2_score(y_true, y_pred)
-
-        # Print evaluation results for all JavaScript files
+    # Print evaluation results
+    if file_name:
+        print(f"\nEvaluation Results for file {file_name}:")
+    else:
         print(f"\nEvaluation Results for all JavaScript files in the folder:")
-        print(f"Mean Absolute Error (MAE): {mae:.2f}")
-        print(f"Mean Squared Error (MSE): {mse:.2f}")
-        print(f"R² Score: {r2:.2f}\n")
 
-        assert mae <= expected_mae, f"MAE should be less than {expected_mae} for good performance"
-        assert r2 >= expected_r2, f"R² should be greater than {expected_r2} to indicate good accuracy"
+    print(f"Mean Absolute Error (MAE): {mae:.2f}")
+    print(f"Mean Squared Error (MSE): {mse:.2f}")
+    print(f"R² Score: {r2:.2f}\n")
+
+    # Assert to verify the overall performance
+    assert mae <= expected_mae, f"MAE should be less than {expected_mae} for good performance"
+    assert r2 >= expected_r2, f"R² should be greater than {expected_r2} to indicate good accuracy"
