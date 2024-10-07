@@ -14,7 +14,13 @@ def create_atoms(target_words, syntax_counts_list, min_atom_size=1, max_atom_siz
     for syntax_counts in syntax_counts_list:
         atoms = {}
         atom_id = 1
+        # Add a section for ambiguous words
+        atoms['ambiguous_word'] = []
+
         for target in target_words:
+            if not target:  # Skip if the target word is empty
+                continue
+
             atoms[target] = []
             count = syntax_counts.get(target, 0)  # Get the count of the current target in this sample
 
@@ -37,12 +43,30 @@ def create_atoms(target_words, syntax_counts_list, min_atom_size=1, max_atom_siz
                         atom_size = random.randint(min_atom_size, max_atom_size)
                         value = target[i:i + atom_size]
                         if value:  # Ensure it's not an empty string
-                            atoms[target].append({
-                                'id': atom_id,
-                                'value': value,
-                                'used': False,
-                                'ref': target
-                            })
+                            # Check if the split atom matches with any other target word
+                            is_ambiguous = False
+                            for other_target in target_words:
+                                if other_target != target and value in other_target:
+                                    is_ambiguous = True
+                                    break
+
+                            if is_ambiguous:
+                                # Add to ambiguous words
+                                atoms['ambiguous_word'].append({
+                                    'id': atom_id,
+                                    'value': value,
+                                    'used': False,
+                                    'ref': 'ambiguous_word'
+                                })
+                            else:
+                                # Add to the original target word atoms list
+                                atoms[target].append({
+                                    'id': atom_id,
+                                    'value': value,
+                                    'used': False,
+                                    'ref': target
+                                })
+
                             atom_id += 1
                         i += atom_size
 
@@ -58,8 +82,15 @@ def determine_syntax_counts(syntax_list, num_samples):
         syntax_counts_list.append(syntax_counts)
     return syntax_counts_list
 
+# Function to generate valid noise that does not match any part of target words
+def generate_valid_noise(target_words, noise_length):
+    while True:
+        noise = ''.join(random.choices(string.ascii_letters + string.digits, k=noise_length))
+        if not any(noise in target for target in target_words):
+            return noise
+
 # Function to generate JavaScript code using all atoms from atoms_list without leaving any unused
-def generate_random_js(atoms_list):
+def generate_random_js(atoms_list, target_words):
     js_samples = []
 
     # Iterate over each atom set for each sample
@@ -99,7 +130,8 @@ def generate_random_js(atoms_list):
 
                 # Randomly decide to add a comment for obfuscation
                 if random.random() > 0.4:
-                    random_comment = ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(5, 15)))
+                    noise_length = random.randint(5, 15)
+                    random_comment = generate_valid_noise(target_words, noise_length)
                     js_code += f"// {random_comment}\n"
 
         # Clean up the ending '+' if it exists
@@ -132,7 +164,7 @@ def save_to_csv_with_features(syntax_counts_list, atoms_list, folder_name="datas
             feature_counts = [syntax_counts[syntax] for syntax in syntax_counts]
 
             # Save atoms as JSON formatted string for better readability in CSV
-            atoms_str = json.dumps(atoms, indent=4)
+            atoms_str = json.dumps(atoms)
 
             writer.writerow([js_name] + feature_counts + [atoms_str])
 
@@ -159,7 +191,7 @@ def main():
     save_to_csv_with_features(syntax_counts_list, atoms_list, folder_name="dataset-testing")
 
     # Generate dataset with obfuscated JavaScript using defined atoms in random order
-    js_samples = generate_random_js(atoms_list)
+    js_samples = generate_random_js(atoms_list, syntax_list)
 
     # Save obfuscated JavaScript files to 'dataset-testing/js'
     save_js_files(js_samples, "dataset-testing/js")
