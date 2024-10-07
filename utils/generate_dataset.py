@@ -144,6 +144,9 @@ def generate_random_js(atoms_list, target_words):
 
 # Function to save obfuscated JavaScript files to the 'js' folder
 def save_js_files(js_samples, folder_name="dataset-testing/js"):
+    # Ensure the directory exists
+    os.makedirs(folder_name, exist_ok=True)
+    
     for idx, js_code in enumerate(js_samples):
         file_path = os.path.join(folder_name, f"sample_{idx + 1}.js")
         with open(file_path, mode='w') as file:
