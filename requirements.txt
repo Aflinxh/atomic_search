@@ -2,3 +2,4 @@
 pip
 matplotlib
 scikit-learn
+pytest
