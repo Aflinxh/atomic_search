@@ -43,15 +43,15 @@ def create_atoms(target_words, syntax_counts_list, min_atom_size=1, max_atom_siz
                         atom_size = random.randint(min_atom_size, max_atom_size)
                         value = target[i:i + atom_size]
                         if value:  # Ensure it's not an empty string
-                            # Check if the split atom matches with any other target word
-                            is_ambiguous = False
-                            for other_target in target_words:
-                                if other_target != target and value in other_target:
-                                    is_ambiguous = True
-                                    break
+                            matching_targets = []
 
-                            if is_ambiguous:
-                                # Add to ambiguous words
+                            # Check if the split atom matches with any target word
+                            for other_target in target_words:
+                                if len(value) >= len(other_target) * min_atom_size // 100 and value in other_target:
+                                    matching_targets.append(other_target)
+
+                            if len(matching_targets) > 1:
+                                # Add to ambiguous words if it matches multiple targets
                                 atoms['ambiguous_word'].append({
                                     'id': atom_id,
                                     'value': value,
@@ -59,7 +59,7 @@ def create_atoms(target_words, syntax_counts_list, min_atom_size=1, max_atom_siz
                                     'ref': 'ambiguous_word'
                                 })
                             else:
-                                # Add to the original target word atoms list
+                                # Add to the original target word atoms list if it matches only one target
                                 atoms[target].append({
                                     'id': atom_id,
                                     'value': value,
