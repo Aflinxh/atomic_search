@@ -100,9 +100,9 @@ def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, e
                     'result_count': result
                 }
 
-    # Save logs if there are errors
-    if errors:
-        save_test_logs(log_dir, js_file_name, errors)
+            # Save logs if there are errors
+            if errors:
+                save_test_logs(log_dir, js_file_name, errors)
 
     # Calculate evaluation metrics for all target words across all files
     if len(y_true) == 0 or len(y_pred) == 0:
