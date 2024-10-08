@@ -28,19 +28,42 @@ def filter_atoms(atoms):
 # Function to find the difference between two lists of atoms
 def compare_atoms(filtered_result, filtered_expected):
     result_diff = {}
+
+    # Loop through each key in filtered_expected
     for key in filtered_expected.keys():
-        expected_set = set(tuple(atom.items()) for atom in filtered_expected[key])
-        result_set = set(tuple(atom.items()) for atom in filtered_result.get(key, []))
+        expected_atoms = filtered_expected[key]
+        result_atoms = filtered_result.get(key, [])
 
-        # Atoms in expected but not in result (missing atoms)
-        missing_atoms = expected_set - result_set
-        # Atoms in result but not in expected (extra atoms)
-        extra_atoms = result_set - expected_set
+        # Mark all atoms in result_atoms as unused initially
+        for atom in result_atoms:
+            atom['used'] = False
 
+        missing_atoms = []
+        extra_atoms = []
+
+        # Compare expected atoms to result atoms
+        for expected_atom in expected_atoms:
+            found = False
+            for result_atom in result_atoms:
+                # Check if atom hasn't been used and matches 'value' and 'ref'
+                if not result_atom['used'] and result_atom['value'] == expected_atom['value'] and result_atom['ref'] == expected_atom['ref']:
+                    result_atom['used'] = True  # Mark the result atom as used
+                    found = True
+                    break
+            if not found:
+                # If no matching atom is found, add to missing_atoms
+                missing_atoms.append(expected_atom)
+
+        # After checking all expected atoms, find extra unused atoms in result_atoms
+        for result_atom in result_atoms:
+            if not result_atom['used']:
+                extra_atoms.append({k: result_atom[k] for k in ('value', 'ref')})  # Include only 'value' and 'ref' in extra_atoms
+
+        # If there are missing or extra atoms, add them to result_diff
         if missing_atoms or extra_atoms:
             result_diff[key] = {
-                'missing_atoms': [dict(atom) for atom in missing_atoms],
-                'extra_atoms': [dict(atom) for atom in extra_atoms]
+                'missing_atoms': missing_atoms,
+                'extra_atoms': extra_atoms
             }
 
     return result_diff
@@ -163,6 +186,8 @@ def test_extract_atoms(file_name, log_dir, dataset_paths, expected_mae, expected
     else:
         print(f"\nEvaluation Results for all JavaScript files in the folder:")
 
+    print(f"True Values: {y_true_total}")
+    print(f"Predicted Values: {y_pred_total}")
     print(f"Mean Absolute Error (MAE): {mae:.2f}")
     print(f"Mean Squared Error (MSE): {mse:.2f}")
     print(f"R² Score: {r2:.2f}\n")
