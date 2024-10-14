@@ -47,7 +47,7 @@ def create_atoms(target_words, syntax_counts_list, min_atom_size=1, max_atom_siz
 
                             # Check if the split atom matches with any target word
                             for other_target in target_words:
-                                if len(value) >= len(other_target) * min_atom_size // 100 and value in other_target:
+                                if any(value in other_target[j:j + len(value)] for j in range(len(other_target))):
                                     matching_targets.append(other_target)
 
                             if len(matching_targets) > 1:
@@ -58,14 +58,16 @@ def create_atoms(target_words, syntax_counts_list, min_atom_size=1, max_atom_siz
                                     'used': False,
                                     'ref': 'ambiguous_word'
                                 })
-                            else:
+                            elif len(matching_targets) == 1:
                                 # Add to the original target word atoms list if it matches only one target
-                                atoms[target].append({
+                                atoms[matching_targets[0]].append({
                                     'id': atom_id,
                                     'value': value,
                                     'used': False,
-                                    'ref': target
+                                    'ref': matching_targets[0]
                                 })
+                            else:
+                                continue
 
                             atom_id += 1
                         i += atom_size
