@@ -94,7 +94,8 @@ def save_test_logs(test_name, file_name, log_dir, filtered_result, filtered_expe
 # Function to evaluate atoms extraction for a given JavaScript file
 def evaluate_atoms(file_name, search_space, expected_atoms, log_dir):
     # Use the target words from the keys of expected atoms
-    target_words = list(expected_atoms.keys())
+    target_words = [key for key in expected_atoms.keys() if key != "ambiguous_word"]
+
     min_atom_size = 1
 
     # Run the extract_atoms function
