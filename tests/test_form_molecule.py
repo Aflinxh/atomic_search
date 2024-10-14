@@ -26,17 +26,20 @@ def read_atoms_and_target_words(csv_file_path, file_name):
 
     return None, None, None
 
-def save_test_logs(log_dir, file_name, errors):
+def create_log_dir(log_dir, file_name):
     # Set timezone to Asia/Jakarta
     jakarta_tz = pytz.timezone('Asia/Jakarta')
     time_stamp = dt.datetime.now(jakarta_tz).strftime("%Y-%m-%d_%H-%M-%S")
 
     # Define the log directory and log file name
-    test_log_dir = os.path.join(log_dir, "test_form_molecule")
+    test_log_dir = os.path.join(log_dir, f"test_form_molecule/{time_stamp}_{file_name}")
     os.makedirs(test_log_dir, exist_ok=True)
-    
+
+    return test_log_dir
+
+def save_test_logs(test_log_dir, file_name, errors):
     # Create log file name with timestamp and file name
-    log_file_name = f"{time_stamp}_{file_name}.json"
+    log_file_name = f"differences.json"
     log_file_path = os.path.join(test_log_dir, log_file_name)
 
     # Write errors to JSON log file
@@ -70,6 +73,8 @@ def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, e
         if not os.path.exists(js_file_path):
             pytest.fail(f"JavaScript file '{js_file_name}' does not exist in the folder '{js_folder}'")
 
+        test_log_dir = create_log_dir(log_dir=log_dir, file_name=js_file_name)
+
         # Read atoms and target words from CSV
         atoms, target_words, expected_counts = read_atoms_and_target_words(csv_file_path, js_file_name)
 
@@ -102,7 +107,7 @@ def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, e
 
             # Save logs if there are errors
             if errors:
-                save_test_logs(log_dir, js_file_name, errors)
+                save_test_logs(test_log_dir, js_file_name, errors)
 
     # Calculate evaluation metrics for all target words across all files
     if len(y_true) == 0 or len(y_pred) == 0:
