@@ -33,3 +33,11 @@ def test_molecule(c, file_name=None):
         c.run(f"pytest tests/test_form_molecule.py --file-name={file_name} -s")
     else:
         c.run("pytest tests/test_form_molecule.py -s")
+
+@task
+def test_atomic(c, file_name=None):
+    """Run pytest for test_atomic_search.py, with optional file-name"""
+    if file_name:
+        c.run(f"pytest tests/test_atomic_search.py --file-name={file_name} -s")
+    else:
+        c.run("pytest tests/test_atomic_search.py -s")
