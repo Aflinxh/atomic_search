@@ -6,6 +6,8 @@ import datetime as dt
 import pytz
 from atomic_search.atomic_search import form_molecule
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import contextlib
+import io
 
 # Function to read the expected atoms and target words from CSV for a given file name
 def read_atoms_and_target_words(csv_file_path, file_name):
@@ -26,14 +28,13 @@ def read_atoms_and_target_words(csv_file_path, file_name):
 
     return None, None, None
 
-def create_log_dir(log_dir, file_name):
+def get_log_dir(log_dir, file_name):
     # Set timezone to Asia/Jakarta
     jakarta_tz = pytz.timezone('Asia/Jakarta')
     time_stamp = dt.datetime.now(jakarta_tz).strftime("%Y-%m-%d_%H-%M-%S")
 
     # Define the log directory and log file name
     test_log_dir = os.path.join(log_dir, f"test_form_molecule/{time_stamp}_{file_name}")
-    os.makedirs(test_log_dir, exist_ok=True)
 
     return test_log_dir
 
@@ -48,15 +49,19 @@ def save_test_logs(test_log_dir, file_name, errors):
 
     print(f"\nTest failed. Log written to: {log_file_path}")
 
+def log_message(message, test_log_dir):
+    log_file_name = f"logs.txt"
+    log_file_path = os.path.join(test_log_dir, log_file_name)
+
+    with open(log_file_path, 'a') as log_file:
+        log_file.write(message + '\n')
+
 # Test for form_molecule function, either for a specific file or for all files in a directory
 def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, expected_mae, expected_r2):
     js_folder, csv_file_path = dataset_paths
 
     y_true = []
     y_pred = []
-
-    # Store errors for logging purposes
-    errors = {}
 
     if file_name:
         # If a specific file is provided
@@ -73,7 +78,10 @@ def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, e
         if not os.path.exists(js_file_path):
             pytest.fail(f"JavaScript file '{js_file_name}' does not exist in the folder '{js_folder}'")
 
-        test_log_dir = create_log_dir(log_dir=log_dir, file_name=js_file_name)
+        test_log_dir = get_log_dir(log_dir=log_dir, file_name=js_file_name)
+        
+        # Store errors for logging purposes
+        errors = {}
 
         # Read atoms and target words from CSV
         atoms, target_words, expected_counts = read_atoms_and_target_words(csv_file_path, js_file_name)
@@ -82,32 +90,37 @@ def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, e
             # Skip if the expected atoms or target words are not found in CSV
             continue
 
-        # Iterate through each target word and run the form_molecule function
-        for target_word in target_words:
-            # Expected output: the total number of successful molecule combinations for the current target word
-            expected_count = expected_counts.get(target_word, 0)
-            y_true.append(expected_count)
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f):       
+            # Iterate through each target word and run the form_molecule function
+            for target_word in target_words:
+                # Expected output: the total number of successful molecule combinations for the current target word
+                expected_count = expected_counts.get(target_word, 0)
+                y_true.append(expected_count)
 
-            # Run the form_molecule function
-            result = form_molecule(
-                atoms=atoms,
-                target_word=target_word,
-                molecule_similarity=molecule_similarity,
-                debugging=False
-            )
-            y_pred.append(result)
+                # Run the form_molecule function
+                result = form_molecule(
+                    atoms=atoms,
+                    target_word=target_word,
+                    molecule_similarity=molecule_similarity,
+                    debugging=False
+                )
+                y_pred.append(result)
 
-            # Compare expected vs result for the current target word
-            if result != expected_count:
-                # Add the error to the errors dictionary
-                errors[target_word] = {
-                    'expected_count': expected_count,
-                    'result_count': result
-                }
+                # Compare expected vs result for the current target word
+                if result != expected_count:
+                    # Add the error to the errors dictionary
+                    errors[target_word] = {
+                        'expected_count': expected_count,
+                        'result_count': result
+                    }
 
-            # Save logs if there are errors
-            if errors:
-                save_test_logs(test_log_dir, js_file_name, errors)
+                # Save logs if there are errors
+                if errors:
+                    os.makedirs(test_log_dir, exist_ok=True)
+                    save_test_logs(test_log_dir, js_file_name, errors)
+                    log_output = f.getvalue()
+                    log_message(message=log_output, test_log_dir=test_log_dir)
 
     # Calculate evaluation metrics for all target words across all files
     if len(y_true) == 0 or len(y_pred) == 0:
