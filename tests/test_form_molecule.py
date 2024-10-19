@@ -103,7 +103,7 @@ def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, e
                     atoms=atoms,
                     target_word=target_word,
                     molecule_similarity=molecule_similarity,
-                    debugging=False
+                    logs=True
                 )
                 y_pred.append(result)
 
