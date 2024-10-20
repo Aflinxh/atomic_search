@@ -7,6 +7,10 @@ import re
 
 def extract_atoms(target_words, search_space, min_atom_size):
     atoms = defaultdict(list)
+
+    for target in target_words:
+        atoms[target] = []
+
     atom_id = 1
     
     if isinstance(min_atom_size, str) and min_atom_size.endswith('%'):

@@ -22,7 +22,7 @@ def read_expected_atoms(csv_file_path, file_name):
 def filter_atoms(atoms):
     filtered_atoms = {}
     for key, atom_list in atoms.items():
-        filtered_atoms[key] = [{'value': atom['value'], 'ref': atom['ref']} for atom in atom_list]
+        filtered_atoms[key] = [{'value': atom['value'], 'ref': atom['ref']} for atom in atom_list] if atom_list else []
     return filtered_atoms
 
 # Function to find the difference between two lists of atoms
@@ -33,6 +33,15 @@ def compare_atoms(filtered_result, filtered_expected):
     for key in filtered_expected.keys():
         expected_atoms = filtered_expected[key]
         result_atoms = filtered_result.get(key, [])
+
+        # Check if the key is missing in the result
+        if key not in filtered_result:
+            result_diff[key] = {
+                'missing_atoms': expected_atoms,  # All expected atoms are missing if the key is not present
+                'extra_atoms': [],  # No extra atoms since the key is missing
+                'message': 'This key is missing'
+            }
+            continue
 
         # Mark all atoms in result_atoms as unused initially
         for atom in result_atoms:

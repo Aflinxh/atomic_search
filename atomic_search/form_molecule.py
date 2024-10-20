@@ -14,7 +14,7 @@ def form_molecule(atoms, target_word, molecule_similarity, logs=False):
     else:
         raise ValueError("molecule_similarity must be a percentage ('90%') or a tolerance ('-2').")
 
-    combined_initial_atoms = atoms[target_word] + atoms['ambiguous_word']
+    combined_initial_atoms = atoms.get(target_word, []) + atoms.get('ambiguous_word', [])
 
     if logs:
         print(f"\n* Target Word: {target_word}")
