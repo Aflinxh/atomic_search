@@ -57,7 +57,7 @@ def log_message(message, test_log_dir):
         log_file.write(message + '\n')
 
 # Test for form_molecule function, either for a specific file or for all files in a directory
-def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, expected_mae, expected_r2):
+def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, expected_mae, expected_r2, show_logs):
     js_folder, csv_file_path = dataset_paths
 
     y_true = []
@@ -115,12 +115,12 @@ def test_form_molecule(file_name, log_dir, dataset_paths, molecule_similarity, e
                         'result_count': result
                     }
 
-                # Save logs if there are errors
-                if errors:
-                    os.makedirs(test_log_dir, exist_ok=True)
-                    save_test_logs(test_log_dir, js_file_name, errors)
-                    log_output = f.getvalue()
-                    log_message(message=log_output, test_log_dir=test_log_dir)
+        # Save logs if there are errors or if --show-logs is enabled
+        if errors or show_logs:
+            os.makedirs(test_log_dir, exist_ok=True)
+            save_test_logs(test_log_dir, js_file_name, errors)
+            log_output = f.getvalue()
+            log_message(message=log_output, test_log_dir=test_log_dir)
 
     # Calculate evaluation metrics for all target words across all files
     if len(y_true) == 0 or len(y_pred) == 0:

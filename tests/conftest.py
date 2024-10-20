@@ -26,6 +26,7 @@ def file_name(request):
 def pytest_addoption(parser):
     parser.addoption("--file-name", action="store", default=None, help="JavaScript file name to test (optional)")
     parser.addoption("--log-dir", action="store", default="logs", help="Directory to store logs (default is 'logs')")
+    parser.addoption("--show-logs", action="store_true", default=False, help="Show logs even when the test succeeds (default is False)")
 
 # Fixture to prepare dataset paths and expected atoms from CSV
 @pytest.fixture
@@ -43,3 +44,8 @@ def log_dir(request):
     os.makedirs(log_dir, exist_ok=True)
     
     return log_dir
+
+@pytest.fixture
+def show_logs(request):
+    # Get the value of show logs from command line options, default is False
+    return request.config.getoption("--show-logs")

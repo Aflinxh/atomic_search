@@ -55,7 +55,7 @@ def log_message(message, test_log_dir):
         log_file.write(message + '\n')
 
 # Function to test atomic_search and compare result with expected counts
-def test_atomic_search(file_name, log_dir, dataset_paths, min_atom_size, molecule_similarity, expected_mae, expected_r2):
+def test_atomic_search(file_name, log_dir, dataset_paths, min_atom_size, molecule_similarity, expected_mae, expected_r2, show_logs):
     js_folder, csv_file_path = dataset_paths
 
     y_true = [] 
@@ -114,8 +114,8 @@ def test_atomic_search(file_name, log_dir, dataset_paths, min_atom_size, molecul
                     'result_count': result_count
                 }
 
-        # Save logs if there are errors
-        if errors:
+        # Save logs if there are errors or if --show-logs is enabled
+        if errors or show_logs:
             os.makedirs(test_log_dir, exist_ok=True)
             save_test_logs(test_log_dir, js_file_name, errors)
             log_output = f.getvalue()

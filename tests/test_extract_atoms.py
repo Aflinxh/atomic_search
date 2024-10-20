@@ -101,7 +101,7 @@ def save_test_logs(test_name, file_name, log_dir, filtered_result, filtered_expe
     print(f"\nTest failed. Logs written to: {test_log_dir}")
 
 # Function to evaluate atoms extraction for a given JavaScript file
-def evaluate_atoms(file_name, search_space, expected_atoms, log_dir):
+def evaluate_atoms(file_name, search_space, expected_atoms, log_dir, show_logs):
     # Use the target words from the keys of expected atoms
     target_words = [key for key in expected_atoms.keys() if key != "ambiguous_word"]
 
@@ -117,8 +117,8 @@ def evaluate_atoms(file_name, search_space, expected_atoms, log_dir):
     # Compare atoms to find any differences
     differences = compare_atoms(filtered_result, filtered_expected)
 
-    # Write logs if differences are found
-    if differences:
+    # Write logs if differences are found or show_logs is True
+    if differences or show_logs:
         save_test_logs('test_extract_atoms', file_name, log_dir, filtered_result, filtered_expected, differences)
 
     # Prepare y_true and y_pred for regression metrics
@@ -131,7 +131,7 @@ def evaluate_atoms(file_name, search_space, expected_atoms, log_dir):
     return y_true, y_pred
 
 # Main test function for extract_atoms
-def test_extract_atoms(file_name, log_dir, dataset_paths, expected_mae, expected_r2):
+def test_extract_atoms(file_name, log_dir, dataset_paths, expected_mae, expected_r2, show_logs):
     js_folder, csv_file_path = dataset_paths
 
     y_true_total = []
@@ -155,7 +155,7 @@ def test_extract_atoms(file_name, log_dir, dataset_paths, expected_mae, expected
             pytest.fail(f"Expected atoms for file '{file_name}' not found in '{csv_file_path}'")
 
         # Evaluate atoms for the given file
-        y_true, y_pred = evaluate_atoms(file_name, search_space, expected_atoms, log_dir)
+        y_true, y_pred = evaluate_atoms(file_name, search_space, expected_atoms, log_dir, show_logs)
         y_true_total.extend(y_true)
         y_pred_total.extend(y_pred)
 
@@ -178,7 +178,7 @@ def test_extract_atoms(file_name, log_dir, dataset_paths, expected_mae, expected
                 continue
 
             # Evaluate atoms for the given file
-            y_true, y_pred = evaluate_atoms(js_file_name, search_space, expected_atoms, log_dir)
+            y_true, y_pred = evaluate_atoms(js_file_name, search_space, expected_atoms, log_dir, show_logs)
             y_true_total.extend(y_true)
             y_pred_total.extend(y_pred)
 
