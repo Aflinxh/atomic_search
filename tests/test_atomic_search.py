@@ -1,34 +1,73 @@
 import os
-import csv
 import pytest
-from atomic_search.atomic_search import atomic_search
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from atomic_search import atomic_search
+import csv
+import io
+import contextlib
+import datetime as dt
+import pytz
+import json
+from sklearn.metrics import mean_absolute_error, r2_score
 
-# Function to read ground truth data from CSV
-def read_ground_truth(csv_file_path):
-    ground_truth = {}
+# Function to read the expected counts from the CSV file
+def read_expected_counts(csv_file_path, file_name):
+    results = {}
+
     with open(csv_file_path, mode='r') as csv_file:
-        reader = csv.reader(csv_file)
-        headers = next(reader)  # Read the headers
+        reader = csv.DictReader(csv_file)
 
         for row in reader:
-            js_name = row[0]  # The first value is the js_name, which includes the full path
-            values = {headers[i]: int(row[i]) for i in range(1, len(headers))}
-            ground_truth[js_name] = values
-    return ground_truth
+            if row['js_name'].endswith(file_name):
+                for key, value in row.items():
+                    if key not in ['js_name', 'atoms']:
+                        results[key] = int(value)
+                break
 
-# Test atomic_search on JavaScript files based on command line input
-def test_atomic_search(dataset_paths, file_name, min_atom_size, molecule_similarity, expected_mae, expected_r2):
+    return results
+
+# Function to get the log directory
+def get_log_dir(log_dir, file_name):
+    # Set timezone to Asia/Jakarta
+    jakarta_tz = pytz.timezone('Asia/Jakarta')
+    time_stamp = dt.datetime.now(jakarta_tz).strftime("%Y-%m-%d_%H-%M-%S")
+
+    # Define the log directory and log file name
+    test_log_dir = os.path.join(log_dir, f"test_atomic_search/{time_stamp}_{file_name}")
+
+    return test_log_dir
+
+# Function to save test logs in JSON format
+def save_test_logs(test_log_dir, file_name, errors):
+    # Create log file name with timestamp and file name
+    log_file_name = f"differences.json"
+    log_file_path = os.path.join(test_log_dir, log_file_name)
+
+    # Write errors to JSON log file
+    with open(log_file_path, 'w') as log_file:
+        json.dump(errors, log_file, indent=4)
+
+# Function to log messages to a log file
+def log_message(message, test_log_dir):
+    log_file_name = f"logs.txt"
+    log_file_path = os.path.join(test_log_dir, log_file_name)
+
+    with open(log_file_path, 'a') as log_file:
+        log_file.write(message + '\n')
+
+# Function to test atomic_search and compare result with expected counts
+def test_atomic_search(file_name, log_dir, dataset_paths, min_atom_size, molecule_similarity, expected_mae, expected_r2):
     js_folder, csv_file_path = dataset_paths
 
-    # Read ground truth data
-    ground_truth_data = read_ground_truth(csv_file_path)
+    y_true = [] 
+    y_pred = [] 
 
-    debugging=False
-
+    # Get list of all .js files or a specific file if provided
     if file_name:
-        # Test a specific file if --file-name is provided
-        js_file_name = file_name
+        js_files = [file_name]
+    else:
+        js_files = [f for f in os.listdir(js_folder) if f.endswith('.js')]
+
+    for js_file_name in js_files:
         js_file_path = os.path.join(js_folder, js_file_name)
 
         # Check if the JavaScript file exists
@@ -37,99 +76,59 @@ def test_atomic_search(dataset_paths, file_name, min_atom_size, molecule_similar
 
         # Read the JavaScript file content
         with open(js_file_path, 'r') as file:
-            js_code = file.read()
+            search_space = file.read()
 
-        # Use full path for matching in ground truth
-        full_js_path = os.path.join(js_folder, js_file_name).replace("\\", "/")  # Ensure compatibility for different OS
+        test_log_dir = get_log_dir(log_dir=log_dir, file_name=js_file_name)
 
-        # If the file is not in the ground truth data, fail the test
-        if full_js_path not in ground_truth_data:
-            pytest.fail(f"Ground truth for file '{full_js_path}' does not exist in '{csv_file_path}'")
+        # Get the expected counts for the current JS file from the CSV
+        expected_counts = read_expected_counts(csv_file_path, js_file_name)
 
-        gt_values = ground_truth_data[full_js_path]
-        syntax_list = list(gt_values.keys())
+        # Get the list of target words (keys of the expected counts)
+        target_words = list(expected_counts.keys())
 
-        # Run atomic_search on the JavaScript code
-        atomic_results = atomic_search(
-            syntax_list,
-            js_code,
-            min_atom_size=min_atom_size,
-            molecule_similarity=molecule_similarity,
-            debugging=debugging
-        )
-
-        # Prepare y_true and y_pred for regression metrics for the current file
-        y_true = [gt_values.get(syntax, 0) for syntax in syntax_list]
-        y_pred = [atomic_results.get(syntax, 0) for syntax in syntax_list]
-
-        # Calculate evaluation metrics for the current file
-        mae = mean_absolute_error(y_true, y_pred)
-        mse = mean_squared_error(y_true, y_pred)
-        r2 = r2_score(y_true, y_pred)
-
-        # Print evaluation results for the current file
-        print(f"\nEvaluation Results for file {js_file_name}:")
-        print(f"Mean Absolute Error (MAE): {mae:.2f}")
-        print(f"Mean Squared Error (MSE): {mse:.2f}")
-        print(f"R² Score: {r2:.2f}\n")
-
-        # Assert to verify the performance of the algorithm on the single file
-        assert mae <= expected_mae, f"MAE for file '{js_file_name}' should be less than 0.1"
-        assert r2 >= expected_r2, f"R² for file '{js_file_name}' should be greater than 0.9 to indicate a good accuracy"
-
-    else:
-        # If no specific file is provided, test all files in the folder
-        syntax_list = list(next(iter(ground_truth_data.values())).keys())
-
-        # List all JavaScript files in the folder
-        js_files = [f for f in os.listdir(js_folder) if f.endswith('.js')]
-
-        y_true = []
-        y_pred = []
-
-        # Iterate through each JavaScript file in the folder
-        for js_file_name in js_files:
-            js_file_path = os.path.join(js_folder, js_file_name)
-
-            # Read JavaScript file content
-            with open(js_file_path, 'r') as file:
-                js_code = file.read()
-
-            # Use full path for matching in ground truth
-            full_js_path = os.path.join(js_folder, js_file_name).replace("\\", "/")
-
-            # If the JavaScript file is not found in ground truth, skip it
-            if full_js_path not in ground_truth_data:
-                continue
-
-            # Retrieve the ground truth values
-            gt_values = ground_truth_data[full_js_path]
-            
-            # Run atomic_search on the JavaScript code
-            atomic_results = atomic_search(
-                syntax_list,
-                js_code,
-                min_atom_size=min_atom_size,
-                molecule_similarity=molecule_similarity,
-                debugging=debugging
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f): 
+            # Run atomic_search to get the result for the current file
+            results = atomic_search(
+                target_words=target_words, 
+                search_space=search_space, 
+                min_atom_size=min_atom_size, 
+                molecule_similarity=molecule_similarity, 
+                logs=True
             )
 
-            # Prepare y_true and y_pred for regression metrics
-            for syntax in syntax_list:
-                y_true.append(gt_values.get(syntax, 0))
-                y_pred.append(atomic_results.get(syntax, 0))
+        # Compare result with expected_counts
+        errors = {}  # To store any mismatches between result and expected_counts
 
-        # Calculate evaluation metrics for the whole folder
-        mae = mean_absolute_error(y_true, y_pred)
-        mse = mean_squared_error(y_true, y_pred)
-        r2 = r2_score(y_true, y_pred)
+        for target_word in target_words:
+            expected_count = expected_counts.get(target_word, 0)  # Get expected count for the target word
+            result_count = results.get(target_word, 0)  # Get result count from atomic_search for the target word
 
-        # Print evaluation results for the whole folder
-        print(f"\nEvaluation Results for all JavaScript files in the folder:")
-        print(f"Mean Absolute Error (MAE): {mae:.2f}")
-        print(f"Mean Squared Error (MSE): {mse:.2f}")
-        print(f"R² Score: {r2:.2f}\n")
+            y_true.append(expected_count)  # Append expected count to y_true
+            y_pred.append(result_count)    # Append result count to y_pred
 
-        # Assert to verify the overall performance
-        assert mae <= expected_mae, "MAE should be less than 0.1 for good performance"
-        assert r2 >= expected_r2, "R² should be greater than 0.9 to indicate a good accuracy"
+            # If there is a mismatch, log the error
+            if expected_count != result_count:
+                errors[target_word] = {
+                    'expected_count': expected_count,
+                    'result_count': result_count
+                }
+
+        # Save logs if there are errors
+        if errors:
+            os.makedirs(test_log_dir, exist_ok=True)
+            save_test_logs(test_log_dir, js_file_name, errors)
+            log_output = f.getvalue()
+            log_message(message=log_output, test_log_dir=test_log_dir)
+
+    # Calculate evaluation metrics (MAE and R²)
+    mae = mean_absolute_error(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+
+    print(f"\nEvaluation Results for file {file_name or 'all files'}:")
+    print(f"Mean Absolute Error (MAE): {mae:.2f}")
+    print(f"R² Score: {r2:.2f}\n")
+
+    # Assert to ensure the performance is as expected
+    assert mae <= expected_mae, f"MAE should be less than {expected_mae} for good performance"
+    assert r2 >= expected_r2, f"R² should be greater than {expected_r2} to indicate good accuracy"
