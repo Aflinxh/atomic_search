@@ -5,6 +5,7 @@ import os
 import argparse
 import json
 from pprint import pprint
+from config import target_words
 
 # Function to create atoms for each target word based on syntax count requirements
 def create_atoms(target_words, syntax_counts_list, min_atom_size=1, max_atom_size=3):
@@ -175,39 +176,22 @@ def save_to_csv_with_features(syntax_counts_list, atoms_list, folder_name="datas
 
 # Main function
 def main():
-    parser = argparse.ArgumentParser(description="Generate obfuscated JavaScript dataset.")
-    parser.add_argument('--num-samples', type=int, default=5, help='Number of JavaScript samples to generate')
-    args = parser.parse_args()
-
-    # syntax_list = [
-    #     'getElementById', 'querySelector', 'addEventListener',
-    #     'setTimeout', 'localStorage', 'sessionStorage',
-    #     'innerHTML', 'console', 'log', 'eval',
-    # ]
-
-    syntax_list = [
-        'getElementById', 'querySelector', 'addEventListener',
-        'setTimeout', 'localStorage',
-        'innerHTML', 'console', 'eval',
-    ]
-
-    # Determine the number of syntax occurrences for each generated JavaScript file
-    num_samples = args.num_samples  # Number of samples to generate from command line argument (default is 10)
-    syntax_counts_list = determine_syntax_counts(syntax_list, num_samples)
+    num_samples = 5  # Default number of samples
+    syntax_counts_list = determine_syntax_counts(target_words, num_samples)
 
     # Create atoms for each target word with random length between min_atom_size and max_atom_size or use the whole target as a single atom
-    atoms_list = create_atoms(syntax_list, syntax_counts_list, min_atom_size=1, max_atom_size=3)
+    atoms_list = create_atoms(target_words, syntax_counts_list, min_atom_size=1, max_atom_size=3)
 
     # Save dataset with features to 'dataset-testing', including atoms
     save_to_csv_with_features(syntax_counts_list, atoms_list, folder_name="dataset-testing")
 
     # Generate dataset with obfuscated JavaScript using defined atoms in random order
-    js_samples = generate_random_js(atoms_list, syntax_list)
+    js_samples = generate_random_js(atoms_list, target_words)
 
     # Save obfuscated JavaScript files to 'dataset-testing/js'
     save_js_files(js_samples, "dataset-testing/js")
 
-    print(f"JavaScript dataset has been saved in the folder 'dataset-testing/js', and the CSV file has been saved in the folder 'dataset-testing'.")
+    print("JavaScript dataset has been saved in the folder 'dataset-testing/js', and the CSV file has been saved in the folder 'dataset-testing'.")
 
 if __name__ == "__main__":
     main()

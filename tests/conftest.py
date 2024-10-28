@@ -1,5 +1,6 @@
 import pytest
 import os
+from utils.config import molecule_similarity as config_molecule_similarity
 
 @pytest.fixture
 def min_atom_size():
@@ -7,7 +8,7 @@ def min_atom_size():
 
 @pytest.fixture
 def molecule_similarity():
-    return "100%"
+    return config_molecule_similarity
 
 @pytest.fixture
 def expected_mae():

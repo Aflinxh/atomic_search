@@ -9,7 +9,7 @@ def atomic_search(target_words, search_space, min_atom_size, molecule_similarity
         if logs:
             print(f"\n{atoms}")
             print(f"--- Target: {target_word}\n")
-        result = form_molecule(atoms, target_word, molecule_similarity, logs)
+        result = form_molecule(atoms, target_word, molecule_similarity.get(target_word, "100%"), logs)
         results[target_word] = result
 
     if logs:
