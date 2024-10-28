@@ -49,4 +49,8 @@ def extract_atoms(target_words, search_space, min_atom_size):
 
         atoms[ref].append(atom_object)
 
+    # Sorting atoms in descending order based on the length of 'value'
+    for ref in atoms:
+        atoms[ref] = sorted(atoms[ref], key=lambda atom: len(atom['value']), reverse=True)
+
     return atoms

@@ -176,13 +176,19 @@ def save_to_csv_with_features(syntax_counts_list, atoms_list, folder_name="datas
 # Main function
 def main():
     parser = argparse.ArgumentParser(description="Generate obfuscated JavaScript dataset.")
-    parser.add_argument('--num-samples', type=int, default=10, help='Number of JavaScript samples to generate')
+    parser.add_argument('--num-samples', type=int, default=5, help='Number of JavaScript samples to generate')
     args = parser.parse_args()
+
+    # syntax_list = [
+    #     'getElementById', 'querySelector', 'addEventListener',
+    #     'setTimeout', 'localStorage', 'sessionStorage',
+    #     'innerHTML', 'console', 'log', 'eval',
+    # ]
 
     syntax_list = [
         'getElementById', 'querySelector', 'addEventListener',
-        'setTimeout', 'localStorage', 'sessionStorage',
-        'innerHTML', 'console', 'log', 'eval',
+        'setTimeout', 'localStorage',
+        'innerHTML', 'console', 'eval',
     ]
 
     # Determine the number of syntax occurrences for each generated JavaScript file

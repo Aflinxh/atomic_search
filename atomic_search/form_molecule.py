@@ -71,6 +71,7 @@ def form_molecule(atoms, target_word, molecule_similarity, logs=False):
                 count += 1
                 for used_atom in used_atoms_local:
                     used_atom['used'] = True
+                    used_atom['combined'] = target_word  # Track the target word only if the molecule is valid
                 if logs:
                     print(f"-- Valid Molecule: {current_molecule}")
         else:
@@ -78,6 +79,7 @@ def form_molecule(atoms, target_word, molecule_similarity, logs=False):
                 count += 1
                 for used_atom in used_atoms_local:
                     used_atom['used'] = True
+                    used_atom['combined'] = target_word  # Track the target word only if the molecule is valid
                 if logs:
                     print(f"-- Valid Molecule: {current_molecule}")
 
