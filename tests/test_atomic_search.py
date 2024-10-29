@@ -7,7 +7,7 @@ import contextlib
 import datetime as dt
 import pytz
 import json
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # Function to read the expected counts from the CSV file
 def read_expected_counts(csv_file_path, file_name):
@@ -123,10 +123,12 @@ def test_atomic_search(file_name, log_dir, dataset_paths, min_atom_size, molecul
 
     # Calculate evaluation metrics (MAE and R²)
     mae = mean_absolute_error(y_true, y_pred)
+    mse = mean_squared_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
 
     print(f"\nEvaluation Results for file {file_name or 'all files'}:")
     print(f"Mean Absolute Error (MAE): {mae:.2f}")
+    print(f"Mean Squared Error (MSE): {mae:.2f}")
     print(f"R² Score: {r2:.2f}\n")
 
     # Assert to ensure the performance is as expected
