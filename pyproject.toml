@@ -27,6 +27,7 @@ keywords = ["malicious code detection", "JavaScript analysis", "obfuscation", "f
 [project.urls]
 "Homepage" = "https://github.com/aflinxh/atomic_search"
 "Documentation" = "https://github.com/aflinxh/atomic_search"
+"Issues" = "https://github.com/Aflinxh/atomic_search/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3.3", "invoke>=2.2.0"]
