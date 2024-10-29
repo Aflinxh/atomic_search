@@ -36,3 +36,14 @@ def test_atomic(c, file_name=None, show_logs=False):
     show_logs_option = "--show-logs" if show_logs else ""
     file_name_option = f"--file-name={file_name}" if file_name else ""
     c.run(f"PYTHONPATH=. pytest tests/test_atomic_search.py {file_name_option} {show_logs_option} -s")
+
+
+@task
+def build(c):
+    """Build the package"""
+    c.run("rm -rf build dist")
+    c.run("python setup.py sdist bdist_wheel")
+
+def reset(c):
+    """Reset the app"""
+    c.run("python utils/reset_app.py")
