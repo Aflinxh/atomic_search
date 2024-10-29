@@ -1,8 +1,0 @@
-# Dev Environment
-pip
-matplotlib
-scikit-learn
-pytest
-pytz
-datetime
-invoke
