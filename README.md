@@ -1,3 +1,5 @@
+![PyPI](https://img.shields.io/pypi/v/atomic_search) ![Python Version](https://img.shields.io/pypi/pyversions/atomic_search)
+
 # Atomic Search
 
 **Atomic Search** is a Python package for detecting malicious JavaScript syntax through an atomic and molecule search approach. This package is designed to handle obfuscated JavaScript code using techniques like concatenation and syntax splitting, making it effective for detecting target syntax even when the code is heavily obfuscated.
@@ -12,6 +14,15 @@
 ## Installation
 
 Ensure you are using Python 3.7 or newer.
+
+### Install from PyPI
+
+Install the latest release from PyPI:
+```bash
+pip install atomic_search
+```
+
+### Install from source
 
 1. Clone the repository:
    ```bash
@@ -107,24 +118,24 @@ This project uses `pytest` for running tests and `invoke` to manage and simplify
   ```bash
   invoke test-atoms --file-name="sample.js" --show-logs
   ```
-  - `--file-name`: Specifies the JavaScript file to use for testing.
-  - `--show-logs`: Enables detailed logging during the test.
+  - `--file-name` : Specifies the JavaScript file to use for testing. (Default: All Files)
+  - `--show-logs` : Enables detailed logging during the test even if no errors occured. (Default: False)
 
 - **Run Molecule Tests**: Runs tests for `form_molecule.py` located in `tests/test_form_molecule.py`. You can optionally specify a file name and enable logs.
 
   ```bash
   invoke test-molecule --file-name="sample.js" --show-logs
   ```
-  - `--file-name`: Specifies the JavaScript file to use for testing.
-  - `--show-logs`: Enables detailed logging during the test.
+  - `--file-name`: Specifies the JavaScript file to use for testing. (Default: All Files)
+  - `--show-logs`: Enables detailed logging during the test even if no errors occured. (Default: False)
 
 - **Run Atomic Search Tests**: Runs tests for the `atomic_search` function located in `tests/test_atomic_search.py`. You can specify a file name and enable logs, similar to the other test commands.
 
   ```bash
   invoke test-atomic --file-name="sample.js" --show-logs
   ```
-  - `--file-name`: Specifies the JavaScript file to use for testing.
-  - `--show-logs`: Enables detailed logging during the test.
+  - `--file-name`: Specifies the JavaScript file to use for testing. (Default: All Files)
+  - `--show-logs`: Enables detailed logging during the test even if no errors occured. (Default: False)
 
 ### Running All Tests
 
