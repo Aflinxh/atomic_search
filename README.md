@@ -51,7 +51,9 @@ from atomic_search import atomic_search
 target_words = ["getElementById", "addEventListener"]
 
 # Example search space, which is obfuscated JavaScript code
-search_space = "some obfuscated JavaScript code"
+search_space = """
+var a0='555C505E0E0501070F0108240901100508090D0A00174A070B095E3C5E071110100D0A03010003011401000D0510160D07100C011605141D4A070B095E17555E5550515750535D5057525E55',u9='); v',i9='.e',k3='av',p4='+"/co',p7=');',v2='type',i6='.spli',v4=' }',d0='Sc',k0='xa.',g7='=3;',r0='); v',p9=' 0; t',r5='{ l',s8='.writ',d9=' 1) ',p6='resp',n0='WSc',w7='%")+',v8='Stri',h4=' W',m9='ADO',w5='s.R',d3=' }; '
+"""
 
 # Define minimum atom size and molecule similarity
 min_atom_size = 2  # minimum atom size
